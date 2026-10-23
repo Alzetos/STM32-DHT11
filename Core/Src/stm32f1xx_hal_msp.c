@@ -99,11 +99,11 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
 
     __HAL_RCC_GPIOA_CLK_ENABLE();
     /**ADC1 GPIO Configuration
-    PA0-WKUP     ------> ADC1_IN0
+    PA4          ------> ADC1_IN4
     */
-    GPIO_InitStruct.Pin = DIVIDER_ADC_Pin;
+    GPIO_InitStruct.Pin = POT_ADC_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-    HAL_GPIO_Init(DIVIDER_ADC_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(POT_ADC_GPIO_Port, &GPIO_InitStruct);
 
     /* USER CODE BEGIN ADC1_MspInit 1 */
 
@@ -130,9 +130,9 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     __HAL_RCC_ADC1_CLK_DISABLE();
 
     /**ADC1 GPIO Configuration
-    PA0-WKUP     ------> ADC1_IN0
+    PA4          ------> ADC1_IN4
     */
-    HAL_GPIO_DeInit(DIVIDER_ADC_GPIO_Port, DIVIDER_ADC_Pin);
+    HAL_GPIO_DeInit(POT_ADC_GPIO_Port, POT_ADC_Pin);
 
     /* USER CODE BEGIN ADC1_MspDeInit 1 */
 
@@ -184,6 +184,35 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
     /* USER CODE END TIM2_MspDeInit 1 */
   }
 
+}
+
+/* TIM4 PWM MSP configuration, matching PB6 / TIM4_CH1 in the IOC. */
+void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef *htim_pwm)
+{
+  if (htim_pwm->Instance == TIM4) {
+    __HAL_RCC_TIM4_CLK_ENABLE();
+  }
+}
+
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  if (htim->Instance == TIM4) {
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    GPIO_InitStruct.Pin = CONTROL_LED_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(CONTROL_LED_GPIO_Port, &GPIO_InitStruct);
+  }
+}
+
+void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef *htim_pwm)
+{
+  if (htim_pwm->Instance == TIM4) {
+    __HAL_RCC_TIM4_CLK_DISABLE();
+    HAL_GPIO_DeInit(CONTROL_LED_GPIO_Port, CONTROL_LED_Pin);
+  }
 }
 
 /* USER CODE BEGIN 1 */

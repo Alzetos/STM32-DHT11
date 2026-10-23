@@ -9,3 +9,13 @@ Current LCD driver: external HD44780-compatible LCD1602. Built-in TFT/GLCD model
 2026-10-23: Added ILI9341 TFT driver for EasyMx CN32/PORTE; regenerated IOC.
 Both Makefile and exact extension command make -j16 DEBUG=1 -f STM32Make.make succeeded without compiler warnings. Linked Monitor_Init/Run, Display_Init/Line and DHT11_Read verified in debug ELF.
 No physical display run or flash performed for this version.
+
+2026-10-23: Added PB6/TIM4_CH1 LED control, 1 kHz PWM, exact ADC threshold 2048, default 1%..100% above threshold. ADC sampling moved to 20 ms, TFT remains 250 ms. External PA0 potentiometer selected; voltage profile DIRECT.
+Host tests: all 4096 ADC codes, both modes, monotonic duty, startup and failure handling PASS.
+Standard Makefile and STM32Make.make DEBUG=1 builds: PASS, no compiler warnings/errors.
+CubeMX GUI unavailable (X11 connection failure); IOC and matching TIM4/PB6 HAL initialization updated manually. Automatic regeneration for the new PWM settings NOT verified.
+New firmware NOT flashed or tested on physical hardware.
+
+2026-10-23: Switched analog input from external PA0/ADC1_IN0 to on-board P1 -> J8 PA4/ADC1_IN4. LED remains PB6/TIM4_CH1. Channel/pin verified against CubeMX MCU database; standard and extension debug builds PASS, no compiler diagnostics. ADC raw is not normalized; existing VREF display setting retained for measurement-based adjustment. Not flashed.
+
+2026-10-23: DHT11 failure-stage diagnostics on TFT row 4; wait for actual pull-up rise before response parsing. Host waveform tests PASS (valid packet, wrap, slow rise, each timeout stage, checksum/range); both ARM builds PASS without compiler diagnostics. No hardware flash performed.

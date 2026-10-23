@@ -67,8 +67,8 @@ void Error_Handler(void);
 #define TFT_D5_GPIO_Port GPIOE
 #define TFT_D6_Pin GPIO_PIN_6
 #define TFT_D6_GPIO_Port GPIOE
-#define DIVIDER_ADC_Pin GPIO_PIN_0
-#define DIVIDER_ADC_GPIO_Port GPIOA
+#define POT_ADC_Pin GPIO_PIN_4
+#define POT_ADC_GPIO_Port GPIOA
 #define TFT_D7_Pin GPIO_PIN_7
 #define TFT_D7_GPIO_Port GPIOE
 #define TFT_RST_Pin GPIO_PIN_8
@@ -87,6 +87,9 @@ void Error_Handler(void);
 #define TFT_D0_GPIO_Port GPIOE
 #define TFT_D1_Pin GPIO_PIN_1
 #define TFT_D1_GPIO_Port GPIOE
+
+#define CONTROL_LED_Pin GPIO_PIN_6
+#define CONTROL_LED_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

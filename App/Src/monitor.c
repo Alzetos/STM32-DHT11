@@ -3,12 +3,16 @@
 #include "monitor_config.h"
 #include "dht11.h"
 #include "display.h"
+#include "led_control.h"
 #include <stdio.h>
 extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim2;
 static DhtReading reading;
 static DhtStatus dht_status = DHT_TIMEOUT;
 static uint32_t last_dht, last_screen;
+static uint32_t last_adc;
+static uint16_t adc_raw;
+static int adc_valid;
 static int adc_read(uint16_t *raw) {
   uint32_t sum = 0;
   for (unsigned i = 0; i < ADC_AVERAGE_SAMPLES; ++i) {
@@ -24,11 +28,13 @@ static int adc_read(uint16_t *raw) {
 }
 void Monitor_Init(void) {
   if (HAL_TIM_Base_Start(&htim2) != HAL_OK || HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK) Error_Handler();
+  LedControl_Init();
   Display_Init();
   Display_Line(0, "DHT11 + ADC / ILI9341"); Display_Line(9, "Sensor warm-up");
   HAL_Delay(2200);
   last_dht = HAL_GetTick() - DHT_INTERVAL_MS;
   last_screen = HAL_GetTick() - 250U;
+  last_adc = HAL_GetTick() - ADC_UPDATE_MS;
 }
 void Monitor_Run(void) {
   uint32_t tick = HAL_GetTick();
@@ -37,9 +43,15 @@ void Monitor_Run(void) {
     last_dht = HAL_GetTick();
   }
   tick = HAL_GetTick();
+  if ((uint32_t)(tick - last_adc) >= ADC_UPDATE_MS) {
+    last_adc = tick;
+    adc_valid = adc_read(&adc_raw);
+    LedControl_Update(adc_raw, adc_valid);
+  }
   if ((uint32_t)(tick - last_screen) < 250U) return;
   last_screen = tick;
   char line[40];
+  Display_Line(4, DHT11_DiagnosticText());
   if (dht_status == DHT_OK) {
     int t=reading.temperature10;
     unsigned magnitude=(unsigned)(t<0?-t:t);
@@ -51,8 +63,8 @@ void Monitor_Run(void) {
     Display_Line(2,"TEMP: --"); Display_Line(3,"HUM: --");
     Display_Line(9,dht_status==DHT_TIMEOUT?"DHT11: NO RESPONSE":dht_status==DHT_CHECKSUM?"DHT11: CHECKSUM":"DHT11: DATA ERROR");
   }
-  uint16_t raw;
-  if (adc_read(&raw)) {
+  uint16_t raw = adc_raw;
+  if (adc_valid) {
     uint32_t adc_mv=((uint32_t)raw*ADC_VREF_MV+2047)/4095;
     uint64_t denominator=4095ULL*DIVIDER_BOTTOM_OHM;
     uint32_t mv=(uint32_t)(((uint64_t)raw*ADC_VREF_MV*(DIVIDER_TOP_OHM+(uint64_t)DIVIDER_BOTTOM_OHM)+denominator/2)/denominator);
@@ -62,4 +74,9 @@ void Monitor_Run(void) {
     else snprintf(line,sizeof line,"U IN: %lu.%03lu V",(unsigned long)(mv/1000),(unsigned long)(mv%1000));
     Display_Line(7,line);
   } else {Display_Line(5,"ADC ERROR");Display_Line(6,"U ADC: --");Display_Line(7,"U IN: --");}
+  uint16_t duty = LedControl_GetDutyPermille();
+  snprintf(line, sizeof line, "LED %s: %u.%u %%",
+           LedControl_GetMode() == LED_MODE_THRESHOLD ? "SW" : "PWM",
+           duty / 10U, duty % 10U);
+  Display_Line(8, line);
 }

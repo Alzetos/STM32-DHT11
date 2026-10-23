@@ -77,6 +77,7 @@ endif
 C_SOURCES =  \
 App/Src/dht11.c \
 App/Src/display.c \
+App/Src/led_control.c \
 App/Src/monitor.c \
 Core/Src/main.c \
 Core/Src/stm32f1xx_hal_msp.c \
