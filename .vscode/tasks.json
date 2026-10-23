@@ -1,0 +1,121 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build STM32",
+      "type": "process",
+      "command": "python3",
+      "args": [
+        "tools/project.py",
+        "build"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "flash-dfu",
+      "type": "process",
+      "command": "python3",
+      "args": [
+        "tools/project.py",
+        "flash-dfu"
+      ],
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "flash-stlink",
+      "type": "process",
+      "command": "python3",
+      "args": [
+        "tools/project.py",
+        "flash-stlink"
+      ],
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "regenerate",
+      "type": "process",
+      "command": "python3",
+      "args": [
+        "tools/project.py",
+        "regenerate"
+      ],
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "clean",
+      "type": "process",
+      "command": "python3",
+      "args": [
+        "tools/project.py",
+        "clean"
+      ],
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "Build STM",
+      "type": "process",
+      "command": "${command:stm32-for-vscode.build}",
+      "options": {
+        "cwd": "${workspaceRoot}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "Build Clean STM",
+      "type": "process",
+      "command": "${command:stm32-for-vscode.cleanBuild}",
+      "options": {
+        "cwd": "${workspaceRoot}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "Flash STM",
+      "type": "process",
+      "command": "${command:stm32-for-vscode.flash}",
+      "options": {
+        "cwd": "${workspaceRoot}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    }
+  ]
+}

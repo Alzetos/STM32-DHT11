@@ -1,0 +1,12 @@
+build/
+.vscode/.cortex-debug*
+*.bak
+.codex
+.aws
+.agents
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets

@@ -1,0 +1,11 @@
+2026-10-22
+CubeMX 6.18.1 generated STM32F107VCT7 project, FW_F1 V1.8.7.
+ARM GCC build: successful; no compiler warnings/errors.
+DHT11 actual driver tested with a host waveform simulator: valid 40-bit frame, timer wrap, bad checksum, stuck high, stuck low, invalid range: PASS.
+ELF e_machine=40 (ARM); vector table checked for SRAM SP and Flash reset vector.
+Physical MCU, LCD and USB programming have NOT been tested: no connected board.
+Current LCD driver: external HD44780-compatible LCD1602. Built-in TFT/GLCD model still unknown.
+
+2026-10-23: Added ILI9341 TFT driver for EasyMx CN32/PORTE; regenerated IOC.
+Both Makefile and exact extension command make -j16 DEBUG=1 -f STM32Make.make succeeded without compiler warnings. Linked Monitor_Init/Run, Display_Init/Line and DHT11_Read verified in debug ELF.
+No physical display run or flash performed for this version.
