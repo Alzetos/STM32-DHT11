@@ -38,6 +38,8 @@ BUILD_DIR = build
 C_SOURCES =  \
 App/Src/dht11.c \
 App/Src/display.c \
+App/Src/stepper_control.c \
+App/Src/servo_control.c \
 App/Src/monitor.c \
 App/Src/led_control.c \
 Core/Src/main.c \

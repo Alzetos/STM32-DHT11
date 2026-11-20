@@ -67,6 +67,13 @@ void Error_Handler(void);
 #define TFT_D5_GPIO_Port GPIOE
 #define TFT_D6_Pin GPIO_PIN_6
 #define TFT_D6_GPIO_Port GPIOE
+#define STEPPER_IN1_Pin GPIO_PIN_6
+#define STEPPER_IN2_Pin GPIO_PIN_7
+#define STEPPER_IN3_Pin GPIO_PIN_8
+#define STEPPER_IN4_Pin GPIO_PIN_9
+#define STEPPER_GPIO_Port GPIOC
+#define SERVO_PWM_Pin GPIO_PIN_6
+#define SERVO_PWM_GPIO_Port GPIOA
 #define POT_ADC_Pin GPIO_PIN_4
 #define POT_ADC_GPIO_Port GPIOA
 #define TFT_D7_Pin GPIO_PIN_7

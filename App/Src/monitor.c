@@ -4,6 +4,8 @@
 #include "dht11.h"
 #include "display.h"
 #include "led_control.h"
+#include "servo_control.h"
+#include "stepper_control.h"
 #include <stdio.h>
 extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim2;
@@ -28,9 +30,12 @@ static int adc_read(uint16_t *raw) {
 }
 void Monitor_Init(void) {
   if (HAL_TIM_Base_Start(&htim2) != HAL_OK || HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK) Error_Handler();
+  StepperControl_Init();
   LedControl_Init();
+  ServoControl_Init();
   Display_Init();
-  Display_Line(0, "DHT11 + ADC / ILI9341"); Display_Line(9, "Sensor warm-up");
+  Display_Line(0, "STEP: WAIT ADC"); Display_Line(9, "Sensor warm-up");
+  Display_Line(1, "SERVO: CLOSED");
   HAL_Delay(2200);
   last_dht = HAL_GetTick() - DHT_INTERVAL_MS;
   last_screen = HAL_GetTick() - 250U;
@@ -40,6 +45,7 @@ void Monitor_Run(void) {
   uint32_t tick = HAL_GetTick();
   if ((uint32_t)(tick - last_dht) >= DHT_INTERVAL_MS) {
     dht_status = DHT11_Read(&reading);
+    ServoControl_Update(reading.humidity10, dht_status == DHT_OK);
     last_dht = HAL_GetTick();
   }
   tick = HAL_GetTick();
@@ -47,10 +53,20 @@ void Monitor_Run(void) {
     last_adc = tick;
     adc_valid = adc_read(&adc_raw);
     LedControl_Update(adc_raw, adc_valid);
+    StepperControl_SetTargetFromAdc(adc_raw, adc_valid);
   }
   if ((uint32_t)(tick - last_screen) < 250U) return;
   last_screen = tick;
   char line[40];
+  unsigned position10 = StepperControl_GetPosition10();
+  unsigned target10 = StepperControl_GetTarget10();
+  if (adc_valid)
+    snprintf(line, sizeof line, "STEP: %u.%u TO %u.%u", position10 / 10U,
+             position10 % 10U, target10 / 10U, target10 % 10U);
+  else snprintf(line, sizeof line, "STEP: ADC ERROR");
+  Display_Line(0, line);
+  Display_Line(1, ServoControl_GetPosition() == SERVO_OPEN
+                  ? "SERVO: OPEN" : "SERVO: CLOSED");
   Display_Line(4, DHT11_DiagnosticText());
   if (dht_status == DHT_OK) {
     int t=reading.temperature10;

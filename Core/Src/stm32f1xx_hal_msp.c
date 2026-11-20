@@ -186,10 +186,12 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
 
 }
 
-/* TIM4 PWM MSP configuration, matching PB6 / TIM4_CH1 in the IOC. */
+/* PWM MSP: TIM3 CH1 on PA6 (servo), TIM4 CH1 on PB6 (LED). */
 void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef *htim_pwm)
 {
-  if (htim_pwm->Instance == TIM4) {
+  if (htim_pwm->Instance == TIM3) {
+    __HAL_RCC_TIM3_CLK_ENABLE();
+  } else if (htim_pwm->Instance == TIM4) {
     __HAL_RCC_TIM4_CLK_ENABLE();
   }
 }
@@ -197,7 +199,15 @@ void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef *htim_pwm)
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  if (htim->Instance == TIM4) {
+  if (htim->Instance == TIM3) {
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    GPIO_InitStruct.Pin = SERVO_PWM_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(SERVO_PWM_GPIO_Port, &GPIO_InitStruct);
+    __HAL_AFIO_REMAP_TIM3_DISABLE();
+  } else if (htim->Instance == TIM4) {
     __HAL_RCC_GPIOB_CLK_ENABLE();
     GPIO_InitStruct.Pin = CONTROL_LED_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -209,7 +219,10 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim)
 
 void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef *htim_pwm)
 {
-  if (htim_pwm->Instance == TIM4) {
+  if (htim_pwm->Instance == TIM3) {
+    __HAL_RCC_TIM3_CLK_DISABLE();
+    HAL_GPIO_DeInit(SERVO_PWM_GPIO_Port, SERVO_PWM_Pin);
+  } else if (htim_pwm->Instance == TIM4) {
     __HAL_RCC_TIM4_CLK_DISABLE();
     HAL_GPIO_DeInit(CONTROL_LED_GPIO_Port, CONTROL_LED_Pin);
   }
