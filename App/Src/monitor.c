@@ -1,3 +1,9 @@
+#include "board_role.h"
+#if BOARD_ROLE != BOARD_STANDALONE
+#include "greenhouse_app.h"
+void Monitor_Init(void) { GreenhouseApp_Init(); }
+void Monitor_Run(void) { GreenhouseApp_Run(); }
+#else
 #include "main.h"
 #include "monitor.h"
 #include "monitor_config.h"
@@ -96,3 +102,4 @@ void Monitor_Run(void) {
            duty / 10U, duty % 10U);
   Display_Line(8, line);
 }
+#endif

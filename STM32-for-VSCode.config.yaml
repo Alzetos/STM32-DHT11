@@ -64,6 +64,9 @@ libraryDirectories: []
 # Do mind that double stars are reserved in yaml
 # these should be escaped with a: \ or the name should be in double quotes e.g. "**.test.**"
 excludes: 
+  - "board_1_sensor/**"
+  - "board_2_servo/**"
+  - "tests/**"
   - "**/Examples/**"
   - "**/examples/**"
   - "**/Example/**"
@@ -111,4 +114,3 @@ customMakefileRules:
 makeFlags:
 # - -O  # use this option when the output of make is mixed up only works for make version 4.0 and upwards
 # - --silent # use this option to silence the output of the build
-    

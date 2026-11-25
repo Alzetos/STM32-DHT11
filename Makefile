@@ -42,6 +42,12 @@ App/Src/stepper_control.c \
 App/Src/servo_control.c \
 App/Src/monitor.c \
 App/Src/led_control.c \
+App/Src/greenhouse.c \
+App/Src/greenhouse_app.c \
+App/Src/greenhouse_server.c \
+App/Src/spi_link.c \
+App/Src/spi_protocol.c \
+App/Src/greenhouse_client.c \
 Core/Src/main.c \
 Core/Src/stm32f1xx_it.c \
 Core/Src/stm32f1xx_hal_msp.c \

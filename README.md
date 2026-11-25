@@ -1,5 +1,13 @@
 # DHT11 + ADC + TFT на EasyMx PRO v7 / STM32F107VCT7
 
+## Две STM32 с обменом SPI
+Готовые отдельные проекты: [плата 1 с DHT11](board_1_sensor/README.md)
+и [плата 2 с сервоприводом](board_2_servo/README.md).
+Открывайте нужную папку в VS Code, затем Ctrl+Shift+B и F5.
+Подключение SPI, ответы OPEN/CLOSED, алгоритм теплицы и проверка:
+[SPI_GREENHOUSE_RU.md](SPI_GREENHOUSE_RU.md).
+Корневой проект ниже сохраняет прежний автономный режим.
+
 Подробное объяснение программы: [CODE_EXPLANATION_RU.md](CODE_EXPLANATION_RU.md).
 
 Шаговый двигатель 28BYJ-48 через готовую плату ULN2003: **PC6–PC9**, положение 0–360° от P1. [Подключение и описание](STEPPER_28BYJ48_RU.md).

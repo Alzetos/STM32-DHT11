@@ -23,6 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stepper_control.h"
+#include "board_role.h"
+#include "spi_link.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -201,5 +203,11 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /* USER CODE BEGIN 1 */
+#if BOARD_ROLE == BOARD_ACTUATOR
+void EXTI15_10_IRQHandler(void)
+{
+  SpiLink_NssRisingIRQ();
+}
+#endif
 
 /* USER CODE END 1 */

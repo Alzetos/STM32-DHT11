@@ -31,5 +31,10 @@ void ServoControl_Update(uint16_t humidity10, int reading_valid)
   else if (humidity10 > SERVO_HUMIDITY_THRESHOLD10) set_position(SERVO_OPEN);
 }
 
+void ServoControl_SetPosition(ServoPosition next)
+{
+  if (next == SERVO_CLOSED || next == SERVO_OPEN) set_position(next);
+}
+
 ServoPosition ServoControl_GetPosition(void) { return position; }
 uint16_t ServoControl_GetPulseUs(void) { return pulse_us; }

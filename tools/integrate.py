@@ -15,17 +15,36 @@ def integrate():
     # Match the correction already used by the working TrafficTimer project.
     text = text.replace('  __HAL_RCC_PLLI2S_ENABLE();\n', '')
     path.write_text(text)
-    path = ROOT / 'Makefile'
-    text = path.read_text()
-    # Use literal source paths: STM32-for-VSCode parses CubeMX Makefile text.
-    for source in sorted((ROOT / 'App/Src').glob('*.c')):
-        name = source.relative_to(ROOT).as_posix()
-        if name not in text:
-            text = text.replace('Core/Src/main.c', name + ' ' + chr(92) + '\nCore/Src/main.c', 1)
-    text = text.replace('C_SOURCES += $(wildcard App/Src/*.c)\n', '')
-    app = '\n# Application integration (restored by tools/integrate.py)\nC_INCLUDES += -IApp/Inc\n'
-    if '# Application integration' not in text:
-        text = text.replace('OBJECTS =', app + '\nOBJECTS =', 1)
-    path.write_text(text)
+    path = ROOT / 'Core/Src/stm32f1xx_it.c'
+    with path.open(newline='') as stream:
+        text = stream.read()
+    for include in ['#include "board_role.h"', '#include "spi_link.h"', '#include "stepper_control.h"']:
+        if include not in text:
+            text = text.replace('/* USER CODE BEGIN Includes */', '/* USER CODE BEGIN Includes */\n' + include, 1)
+    if 'StepperControl_Tick1ms();' not in text:
+        text = text.replace('/* USER CODE BEGIN SysTick_IRQn 1 */',
+                            '/* USER CODE BEGIN SysTick_IRQn 1 */\n  StepperControl_Tick1ms();', 1)
+    if 'SpiLink_NssRisingIRQ();' not in text:
+        text = text.replace('/* USER CODE BEGIN 1 */', '''/* USER CODE BEGIN 1 */
+#if BOARD_ROLE == BOARD_ACTUATOR
+void EXTI15_10_IRQHandler(void) { SpiLink_NssRisingIRQ(); }
+#endif''', 1)
+    with path.open('w', newline='') as stream:
+        stream.write(text)
+    for filename in ['Makefile', 'STM32Make.make']:
+        path = ROOT / filename
+        if not path.exists():
+            continue
+        text = path.read_text()
+        # Literal source paths also work with the STM32-for-VSCode parser.
+        for source in sorted((ROOT / 'App/Src').glob('*.c')):
+            name = source.relative_to(ROOT).as_posix()
+            if name not in text:
+                text = text.replace('Core/Src/main.c', name + ' ' + chr(92) + '\nCore/Src/main.c', 1)
+        text = text.replace('C_SOURCES += $(wildcard App/Src/*.c)\n', '')
+        app = '\n# Application integration (restored by tools/integrate.py)\nC_INCLUDES += -IApp/Inc\n'
+        if '-IApp/Inc' not in text:
+            text = text.replace('OBJECTS =', app + '\nOBJECTS =', 1)
+        path.write_text(text)
 if __name__ == '__main__':
     integrate()
