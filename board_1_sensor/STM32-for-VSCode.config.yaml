@@ -65,7 +65,7 @@ libraryDirectories: []
 # these should be escaped with a: \ or the name should be in double quotes e.g. "**.test.**"
 excludes: 
   - "board_1_sensor/**"
-  - "board_2_servo/**"
+  - "board_2_stepper/**"
   - "tests/**"
   - "**/Examples/**"
   - "**/examples/**"

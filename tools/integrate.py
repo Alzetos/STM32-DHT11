@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Restore application integration after CubeMX regeneration; idempotent."""
 from pathlib import Path
+import re
 ROOT = Path(__file__).resolve().parents[1]
 def integrate():
     path = ROOT / 'Core/Src/main.c'
@@ -18,16 +19,18 @@ def integrate():
     path = ROOT / 'Core/Src/stm32f1xx_it.c'
     with path.open(newline='') as stream:
         text = stream.read()
-    for include in ['#include "board_role.h"', '#include "spi_link.h"', '#include "stepper_control.h"']:
+    for include in ['#include "board_role.h"', '#include "uart_link.h"', '#include "stepper_control.h"']:
         if include not in text:
             text = text.replace('/* USER CODE BEGIN Includes */', '/* USER CODE BEGIN Includes */\n' + include, 1)
     if 'StepperControl_Tick1ms();' not in text:
         text = text.replace('/* USER CODE BEGIN SysTick_IRQn 1 */',
                             '/* USER CODE BEGIN SysTick_IRQn 1 */\n  StepperControl_Tick1ms();', 1)
-    if 'SpiLink_NssRisingIRQ();' not in text:
+    text = text.replace('#include "spi_link.h"', '')
+    text = re.sub(r'#if BOARD_ROLE == BOARD_ACTUATOR\r?\nvoid EXTI4_IRQHandler\(void\)\s*\{\s*SpiLink_NssRisingIRQ\(\);\s*\}\s*#endif', '', text)
+    if 'UartLink_IRQHandler();' not in text:
         text = text.replace('/* USER CODE BEGIN 1 */', '''/* USER CODE BEGIN 1 */
-#if BOARD_ROLE == BOARD_ACTUATOR
-void EXTI15_10_IRQHandler(void) { SpiLink_NssRisingIRQ(); }
+#if BOARD_ROLE != BOARD_STANDALONE
+void USART2_IRQHandler(void) { UartLink_IRQHandler(); }
 #endif''', 1)
     with path.open('w', newline='') as stream:
         stream.write(text)

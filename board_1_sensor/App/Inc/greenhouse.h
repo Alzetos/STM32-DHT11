@@ -8,6 +8,10 @@
 #define GH_TEMP_CLOSE10 260
 #define GH_CONFIRM_SAMPLES 2U
 #define GH_DATA_TIMEOUT_MS 10000U
+/* Nominal 90 degrees for the current 4096-half-step gearbox calibration.
+ * No homing sensor: put the mechanism CLOSED before powering the board. */
+#define GH_STEPPER_CLOSED_STEPS 0U
+#define GH_STEPPER_OPEN_STEPS 1024U
 enum { GH_REASON_HUMIDITY = 1, GH_REASON_TEMPERATURE = 2 };
 typedef struct {
   uint8_t open, humidity_request, temperature_request, confirmations;

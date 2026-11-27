@@ -4,10 +4,10 @@
 #include "greenhouse_app.h"
 #include "greenhouse_server.h"
 #include "greenhouse_client.h"
-#include "spi_link.h"
+#include "greenhouse_motor.h"
+#include "uart_link.h"
 #include "display.h"
 #include "monitor_config.h"
-#include "servo_control.h"
 #include "dht11.h"
 #include "led_control.h"
 #include "stepper_control.h"
@@ -30,7 +30,7 @@ extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim2;
 static DhtReading reading;
 static DhtStatus dht_status;
-static uint32_t last_dht, last_adc, last_spi;
+static uint32_t last_dht, last_adc, last_uart;
 static uint16_t adc_raw;
 static int adc_valid;
 static GreenhouseClient client;
@@ -46,28 +46,28 @@ static int adc_read(uint16_t *raw) {
   *raw = (uint16_t)((sum + ADC_AVERAGE_SAMPLES/2) / ADC_AVERAGE_SAMPLES);
   return 1;
 }
-static void exchange(uint32_t now) {
-  SpiMessage request;
-  uint8_t tx[SPI_PACKET_SIZE], rx[SPI_PACKET_SIZE];
+static void exchange(void) {
+  LinkMessage request;
+  uint8_t tx[LINK_PACKET_SIZE], rx[LINK_PACKET_SIZE];
   GreenhouseClient_Request(&client, &request);
-  SpiProtocol_Encode(tx, &request);
-  if (!SpiLink_MasterExchange(tx, rx)) { ++client.bad_replies; return; }
-  GreenhouseClient_Reply(&client, rx, now);
+  LinkProtocol_Encode(tx, &request);
+  if (!UartLink_Exchange(tx, rx)) { ++client.bad_replies; return; }
+  GreenhouseClient_Reply(&client, rx, HAL_GetTick());
 }
 void GreenhouseApp_Init(void) {
   if (HAL_TIM_Base_Start(&htim2) != HAL_OK || HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK) Error_Handler();
-  StepperControl_Init(); LedControl_Init();
-  SpiLink_Init(0);
-  GreenhouseClient_Init(&client, (uint16_t)(DWT->CYCCNT ^ HAL_GetTick()));
+  LedControl_Init();
+  UartLink_Init();
+  GreenhouseClient_Init(&client, (uint16_t)(HAL_GetTick() ^ 0xA17FU));
   Display_Init();
-  Display_Line(0, "BOARD 1: SENSOR MASTER");
-  Display_Line(1, "REMOTE: WAIT SPI");
+  Display_Line(0, "BOARD1 SENSOR UART2 V3");
+  Display_Line(1, "REMOTE: WAIT UART");
   Display_Line(9, "DHT11: WARM-UP");
   /* During warm-up the receiver can already answer, without polling DHT11 early. */
   uint32_t start = HAL_GetTick();
   while ((uint32_t)(HAL_GetTick() - start) < 2200U) {
     uint32_t now = HAL_GetTick();
-    if ((uint32_t)(now - last_spi) >= 100U) { last_spi = now; exchange(now); }
+    if ((uint32_t)(now - last_uart) >= 200U) { last_uart = now; exchange(); }
   }
   last_dht = HAL_GetTick() - DHT_INTERVAL_MS;
   last_adc = HAL_GetTick() - ADC_UPDATE_MS;
@@ -81,17 +81,20 @@ void GreenhouseApp_Run(void) {
                                  reading.humidity10, dht_status == DHT_OK);
   }
   now = HAL_GetTick();
-  if ((uint32_t)(now - last_spi) >= 100U) { last_spi = now; exchange(now); }
+  if ((uint32_t)(now - last_uart) >= 200U) { last_uart = now; exchange(); }
   now = HAL_GetTick();
   if ((uint32_t)(now - last_adc) >= ADC_UPDATE_MS) {
     last_adc = now; adc_valid = adc_read(&adc_raw);
-    LedControl_Update(adc_raw, adc_valid); StepperControl_SetTargetFromAdc(adc_raw, adc_valid);
+    LedControl_Update(adc_raw, adc_valid);
   }
   if ((uint32_t)(now - last_screen) < 250U) return;
   last_screen = now;
   int online = GreenhouseClient_Online(&client, now);
-  Display_Line(1, !online ? "REMOTE: NO SPI REPLY" : !client.ready ? "REMOTE: SYNC" :
-    (client.remote.flags & SPI_STATUS_OPEN) ? "REMOTE: OPEN" : "REMOTE: CLOSED");
+  Display_Line(1, !online ? "REMOTE: NO UART REPLY" : !client.ready ? "REMOTE: SYNC" :
+    (client.remote.flags & LINK_STATUS_MOVING) ?
+      ((client.remote.detail & LINK_DETAIL_TARGET_OPEN) ? "REMOTE: OPENING" : "REMOTE: CLOSING") :
+    (client.remote.flags & LINK_STATUS_OPEN) ? "REMOTE: OPEN" :
+    (client.remote.detail & LINK_DETAIL_AT_CLOSED) ? "REMOTE: CLOSED" : "REMOTE: STOPPED");
   if (dht_status == DHT_OK) {
     show_number(2, "TEMP", reading.temperature10, "C");
     show_number(3, "HUM", reading.humidity10, "%");
@@ -103,70 +106,91 @@ void GreenhouseApp_Run(void) {
     char line[40]; snprintf(line, sizeof line, "U ADC: %lu.%03lu V", (unsigned long)(mv/1000), (unsigned long)(mv%1000));
     Display_Line(6, line);
   } else { Display_Line(5, "ADC: ERROR"); Display_Line(6, "U ADC: --"); }
-  Display_Line(7, !online ? "SPI: OFFLINE" : !client.ready ? "SPI: SYNCHRONIZING" :
-    (client.remote.flags & SPI_STATUS_STALE) ? "SPI: OK / DATA STALE" :
-    (client.remote.flags & SPI_STATUS_SENSOR_ERROR) ? "SPI: OK / SENSOR ERROR" :
-    (client.remote.flags & SPI_STATUS_RX_ERROR) ? "SPI: OK / RX ERROR" : "SPI: OK");
+  Display_Line(7, !online ? "UART: OFFLINE" : !client.ready ? "UART: SYNC" :
+    (client.remote.flags & LINK_STATUS_STALE) ? "UART: OK / DATA STALE" :
+    (client.remote.flags & LINK_STATUS_SENSOR_ERROR) ? "UART: OK / SENSOR ERROR" :
+    (client.remote.flags & LINK_STATUS_RX_ERROR) ? "UART: OK / RX ERROR" : "UART: OK");
   char line[40]; snprintf(line, sizeof line, "TX:%u ACK:%u %s", client.sequence,
-    client.have_reply && (client.remote.flags & SPI_STATUS_HAVE_MEASUREMENT) ? client.remote.sequence : 0,
-    client.pending ? "WAIT" : "OK"); Display_Line(8, line);
-  Display_Line(9, dht_status == DHT_OK ? "DHT11: OK" : "DHT11: ERROR");
+    client.have_reply && (client.remote.flags & LINK_STATUS_HAVE_MEASUREMENT) ? client.remote.sequence : 0,
+    client.pending ? "WAIT" : "OK");
+  Display_Line(8, line);
+  UartLinkDiagnostics diagnostics; UartLink_GetDiagnostics(&diagnostics);
+  snprintf(line, sizeof line, "RX:%02X %02X %02X %02X N:%u",
+    diagnostics.last_rx[0], diagnostics.last_rx[1], diagnostics.last_rx[2],
+    diagnostics.last_rx[3], diagnostics.last_size);
+  Display_Line(9, line);
 }
 #else
 static GreenhouseServer server;
 static int16_t temperature10;
 static uint16_t humidity10;
 static uint32_t seen_errors;
-static uint8_t previous_status[SPI_PACKET_SIZE];
-static int status_valid;
-static void publish(uint32_t now, int initial) {
-  SpiMessage m; uint8_t packet[SPI_PACKET_SIZE];
-  GreenhouseServer_Status(&server, now, ServoControl_GetPulseUs(), &m);
-  SpiProtocol_Encode(packet, &m);
-  if (initial) SpiLink_Init(packet);
-  else if (!status_valid || memcmp(previous_status, packet, sizeof packet)) SpiLink_SlavePublish(packet);
-  memcpy(previous_status, packet, sizeof packet); status_valid = 1;
+static void reply_status(uint32_t now) {
+  LinkMessage m; uint8_t packet[LINK_PACKET_SIZE];
+  GreenhouseServer_Status(&server, now, StepperControl_GetPositionSteps(),
+                          StepperControl_IsMoving(), &m);
+  LinkProtocol_Encode(packet, &m);
+  (void)UartLink_Send(packet);
 }
 void GreenhouseApp_Init(void) {
   GreenhouseServer_Init(&server);
-  ServoControl_Init();
+  GreenhouseMotor_Init();
   Display_Init();
-  Display_Line(0, "BOARD 2: SERVO SLAVE");
-  Display_Line(1, "SERVO CMD: CLOSED");
+  Display_Line(0, "BOARD2 STEP UART2 V3");
+  Display_Line(1, "STEPPER: CLOSED ZERO");
   last_screen = HAL_GetTick() - 250U;
-  publish(HAL_GetTick(), 1);
+  UartLink_Init();
 }
 void GreenhouseApp_Run(void) {
   uint32_t now = HAL_GetTick();
-  uint32_t errors = SpiLink_ErrorCount();
+  uint32_t errors = UartLink_ErrorCount();
   if (errors != seen_errors) { server.rx_error = 1; seen_errors = errors; }
-  uint8_t packet[SPI_PACKET_SIZE]; SpiMessage message;
-  while (SpiLink_SlaveReceive(packet)) {
+  uint8_t packet[LINK_PACKET_SIZE]; LinkMessage message;
+  while (UartLink_Receive(packet)) {
     now = HAL_GetTick();
-    if (!SpiProtocol_Decode(&message, packet) || message.type == SPI_TYPE_STATUS) server.rx_error = 1;
-    else if (GreenhouseServer_Receive(&server, &message, now)) {
-      if (message.flags & SPI_DATA_VALID) {
+    if (!LinkProtocol_Decode(&message, packet) ||
+        (message.type != LINK_TYPE_HELLO && message.type != LINK_TYPE_POLL &&
+         message.type != LINK_TYPE_MEASUREMENT)) {
+      server.rx_error = 1; continue;
+    }
+    if (GreenhouseServer_Receive(&server, &message, now)) {
+      if (message.flags & LINK_DATA_VALID) {
         temperature10 = message.temperature10; humidity10 = message.humidity10;
       }
     }
+    GreenhouseMotor_Update(&server, now);
+    reply_status(now);
   }
   now = HAL_GetTick(); Greenhouse_Tick(&server.control, now);
-  ServoControl_SetPosition(server.control.open ? SERVO_OPEN : SERVO_CLOSED);
-  publish(now, 0);
+  GreenhouseMotor_Update(&server, now);
   if ((uint32_t)(now - last_screen) < 250U) return;
   last_screen = now;
-  Display_Line(1, server.control.open ? "SERVO CMD: OPEN" : "SERVO CMD: CLOSED");
+  uint16_t position = StepperControl_GetPositionSteps();
+  Display_Line(1, StepperControl_IsMoving() ? (server.control.open ? "STEPPER: OPENING" : "STEPPER: CLOSING") :
+    position == GH_STEPPER_OPEN_STEPS ? "STEPPER: OPEN" :
+    position == GH_STEPPER_CLOSED_STEPS ? "STEPPER: CLOSED" : "STEPPER: STOPPED");
   int stale = Greenhouse_Stale(&server.control, now);
   if (server.measurement_valid && !stale) {
     show_number(2, "TEMP", temperature10, "C"); show_number(3, "HUM", humidity10, "%");
   } else { Display_Line(2, "TEMP: --"); Display_Line(3, "HUM: --"); }
   Display_Line(4, stale ? "DATA: STALE / HOLD" : server.control.sensor_error ? "DHT ERROR / HOLD" : "DATA: VALID");
-  show_u16(5, "ACK SEQUENCE", server.have_measurement ? server.sequence : 0);
-  show_u16(6, "SERVO PULSE US", ServoControl_GetPulseUs());
-  Display_Line(7, !server.session_ready ? "SPI: WAIT MASTER HELLO" : server.rx_error ? "SPI: RX ERROR" : "SPI: SESSION READY");
+  UartLinkDiagnostics diagnostics; UartLink_GetDiagnostics(&diagnostics);
+  if (server.session_ready) show_u16(5, "ACK SEQUENCE", server.have_measurement ? server.sequence : 0);
+  else {
+    char header[40]; snprintf(header, sizeof header, "IN:%02X %02X %02X %02X",
+      diagnostics.last_rx[0], diagnostics.last_rx[1], diagnostics.last_rx[2], diagnostics.last_rx[3]);
+    Display_Line(5, header);
+  }
+  char line[40]; snprintf(line, sizeof line, "STEP:%u TARGET:%u", position, StepperControl_GetTargetSteps());
+  Display_Line(6, line);
+  Display_Line(7, server.rx_error ? "UART: BAD FRAME / CRC" : !server.session_ready ? "UART: WAIT HELLO" : "UART: SESSION READY");
   uint8_t reason = Greenhouse_Reasons(&server.control);
   Display_Line(8, reason == 3 ? "REQUEST: HUM + TEMP" : reason == 1 ? "REQUEST: HUMIDITY" : reason == 2 ? "REQUEST: TEMPERATURE" : "REQUEST: NONE");
-  show_u16(9, "CONFIRM SAMPLES", server.control.confirmations);
+  snprintf(line, sizeof line, "B:%lu R:%lu E:%lu",
+    (unsigned long)(diagnostics.rx_bytes % 100000U),
+    (unsigned long)(diagnostics.rx_frames % 100000U),
+    (unsigned long)(diagnostics.errors % 100000U));
+  Display_Line(9, line);
 }
 #endif
 #endif

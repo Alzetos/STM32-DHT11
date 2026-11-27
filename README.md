@@ -2,7 +2,7 @@
 
 ## Две STM32 с обменом SPI
 Готовые отдельные проекты: [плата 1 с DHT11](board_1_sensor/README.md)
-и [плата 2 с сервоприводом](board_2_servo/README.md).
+и [плата 2 с шаговым двигателем](board_2_stepper/README.md).
 Открывайте нужную папку в VS Code, затем Ctrl+Shift+B и F5.
 Подключение SPI, ответы OPEN/CLOSED, алгоритм теплицы и проверка:
 [SPI_GREENHOUSE_RU.md](SPI_GREENHOUSE_RU.md).

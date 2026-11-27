@@ -84,9 +84,11 @@ App/Src/stepper_control.c \
 App/Src/greenhouse.c \
 App/Src/greenhouse_app.c \
 App/Src/greenhouse_server.c \
-App/Src/spi_link.c \
-App/Src/spi_protocol.c \
+App/Src/uart_link.c \
+App/Src/link_protocol.c \
 App/Src/greenhouse_client.c \
+App/Src/greenhouse_motor.c \
+App/Src/uart_framer.c \
 Core/Src/main.c \
 Core/Src/stm32f1xx_hal_msp.c \
 Core/Src/stm32f1xx_it.c \

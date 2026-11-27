@@ -5,7 +5,7 @@
 /* IN1,IN2,IN3,IN4 half-step sequence. Only these GPIO bits are touched. */
 static const uint8_t sequence[8] = {1, 3, 2, 6, 4, 12, 8, 9};
 static volatile uint32_t position, target;
-static volatile uint8_t initialized, enabled;
+static volatile uint8_t initialized, enabled, stopped_hold;
 static uint8_t phase, elapsed, applied;
 
 static void drive(uint8_t mask)
@@ -27,6 +27,7 @@ void StepperControl_Init(void)
 {
   initialized = 0;
   enabled = 0;
+  stopped_hold = 0;
   position = target = 0; /* present shaft position is the software zero */
   phase = elapsed = 0;
   applied = 255;
@@ -36,6 +37,7 @@ void StepperControl_Init(void)
 
 void StepperControl_SetTargetFromAdc(uint16_t raw, int valid)
 {
+  stopped_hold = 0;
   if (!valid || raw > 4095U) {
     enabled = 0; /* next tick releases coils; no stale ADC command */
     return;
@@ -48,6 +50,30 @@ void StepperControl_SetTargetFromAdc(uint16_t raw, int valid)
   enabled = 1;
 }
 
+int StepperControl_SetTargetSteps(uint16_t steps)
+{
+  if (steps > STEPPER_STEPS_PER_REV) { StepperControl_Stop(0); return 0; }
+  target = steps;
+  stopped_hold = 0;
+  enabled = 1;
+  return 1;
+}
+
+void StepperControl_Stop(int hold)
+{
+  /* A tick must not advance position between the snapshot and target write. */
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  target = position;
+  elapsed = 0;
+  stopped_hold = hold != 0;
+  enabled = hold != 0;
+  __set_PRIMASK(primask);
+}
+
+uint16_t StepperControl_GetPositionSteps(void) { return (uint16_t)position; }
+uint16_t StepperControl_GetTargetSteps(void) { return (uint16_t)target; }
+
 void StepperControl_Tick1ms(void)
 {
   if (!initialized) return;
@@ -56,11 +82,7 @@ void StepperControl_Tick1ms(void)
   const uint32_t current = position;
   if (current == goal) {
     elapsed = 0;
-#if STEPPER_HOLD_AT_TARGET
-    drive(sequence[phase]);
-#else
-    drive(0);
-#endif
+    drive((stopped_hold || STEPPER_HOLD_AT_TARGET) ? sequence[phase] : 0);
     return;
   }
   /* Energize the current phase, then wait before the next half-step. */
